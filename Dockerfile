@@ -5,22 +5,26 @@ WORKDIR /app
 # Copiar todo el proyecto
 COPY . .
 
-# Crear directorios necesarios
-RUN mkdir -p build/WEB-INF/classes
+# Crear directorios de build
+RUN mkdir -p build/WEB-INF/classes build/META-INF
 
-# Compilar todos los archivos Java usando los JARs de WEB-INF/lib
+# Compilar Java usando los JARs de WEB-INF/lib
 RUN javac -d build/WEB-INF/classes \
     -cp "web/WEB-INF/lib/*" \
     $(find src/java -name "*.java")
 
-# Copiar recursos web al directorio de build
-RUN cp -r web/WEB-INF build/ && \
-    cp -r web/META-INF build/ && \
-    cp web/index.html build/ && \
-    cp -r build/WEB-INF/classes build/WEB-INF/
+# Copiar JARs al build
+RUN cp -r web/WEB-INF/lib build/WEB-INF/
+
+# Copiar web.xml
+RUN cp web/WEB-INF/web.xml build/WEB-INF/
+
+# Copiar META-INF y index.html
+RUN cp web/META-INF/context.xml build/META-INF/
+RUN cp web/index.html build/
 
 # Empaquetar WAR
-RUN cd build && jar -cf /app/MechAPIBueno.war .
+RUN jar -cf /app/MechAPIBueno.war -C build .
 
 # ══ STAGE 2 — Runtime con Tomcat ═════════════════════════════
 FROM tomcat:10.1-jdk17
