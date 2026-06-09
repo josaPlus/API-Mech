@@ -19,7 +19,7 @@ import org.lasalle.model.Pieza;
  * @author josaf
  */
 public class InventarioController {
-    
+ 
     private Pieza fill(ResultSet rs) throws SQLException {
         Pieza p = new Pieza();
         p.setId(rs.getInt("id"));
@@ -34,7 +34,7 @@ public class InventarioController {
         p.setUpdatedAt(rs.getString("updated_at"));
         return p;
     }
-
+ 
     // GET todo el inventario
     public List<Pieza> getAll() throws SQLException {
         String sql = """
@@ -48,24 +48,24 @@ public class InventarioController {
             FROM inventario
             ORDER BY nombre
             """;
-
+ 
         ConnectionMySQL connMySQL = new ConnectionMySQL();
         Connection conn = connMySQL.open();
         PreparedStatement pstm = conn.prepareStatement(sql);
         ResultSet rs = pstm.executeQuery();
-
+ 
         List<Pieza> lista = new ArrayList<>();
         while (rs.next()) {
             lista.add(fill(rs));
         }
-
+ 
         rs.close();
         pstm.close();
         connMySQL.close();
         conn.close();
         return lista;
     }
-
+ 
     // GET pieza por ID
     public Pieza getById(int id) throws SQLException {
         String sql = """
@@ -79,62 +79,66 @@ public class InventarioController {
             FROM inventario
             WHERE id = ?
             """;
-
+ 
         ConnectionMySQL connMySQL = new ConnectionMySQL();
         Connection conn = connMySQL.open();
         PreparedStatement pstm = conn.prepareStatement(sql);
         pstm.setInt(1, id);
         ResultSet rs = pstm.executeQuery();
-
+ 
         Pieza pieza = null;
         if (rs.next()) {
             pieza = fill(rs);
         }
-
+ 
         rs.close();
         pstm.close();
         connMySQL.close();
         conn.close();
         return pieza;
     }
-
+ 
     // GET inventario por estado de stock
+    // FIX: HAVING con alias calculado no funciona en MySQL sin subconsulta.
+    // Se envuelve en subconsulta para poder filtrar por estado_stock correctamente.
     public List<Pieza> getByEstado(String estado) throws SQLException {
         String sql = """
-            SELECT *,
-              CASE
-                WHEN stock_actual = 0            THEN 'sin_stock'
-                WHEN stock_actual < stock_minimo THEN 'critico'
-                WHEN stock_actual = stock_minimo THEN 'bajo'
-                ELSE 'disponible'
-              END AS estado_stock
-            FROM inventario
-            HAVING estado_stock = ?
+            SELECT * FROM (
+              SELECT *,
+                CASE
+                  WHEN stock_actual = 0            THEN 'sin_stock'
+                  WHEN stock_actual < stock_minimo THEN 'critico'
+                  WHEN stock_actual = stock_minimo THEN 'bajo'
+                  ELSE 'disponible'
+                END AS estado_stock
+              FROM inventario
+            ) AS sub
+            WHERE sub.estado_stock = ?
             ORDER BY nombre
             """;
-
+ 
         ConnectionMySQL connMySQL = new ConnectionMySQL();
         Connection conn = connMySQL.open();
         PreparedStatement pstm = conn.prepareStatement(sql);
         pstm.setString(1, estado);
         ResultSet rs = pstm.executeQuery();
-
+ 
         List<Pieza> lista = new ArrayList<>();
         while (rs.next()) {
             lista.add(fill(rs));
         }
-
+ 
         rs.close();
         pstm.close();
         connMySQL.close();
         conn.close();
         return lista;
     }
-
+ 
     // POST crear pieza
     public Pieza create(Pieza p) throws SQLException {
         String sql = "INSERT INTO inventario VALUES(0, ?, ?, ?, ?, ?, ?, ?, DEFAULT)";
-
+ 
         ConnectionMySQL connMySQL = new ConnectionMySQL();
         Connection conn = connMySQL.open();
         PreparedStatement pstm = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
@@ -146,20 +150,20 @@ public class InventarioController {
         pstm.setInt(6, p.getStockMinimo());
         pstm.setString(7, p.getDescripcion());
         pstm.executeUpdate();
-
+ 
         ResultSet rs = pstm.getGeneratedKeys();
         if (rs.next()) {
             p.setId(rs.getInt(1));
             System.out.println("Pieza creada con id: " + rs.getInt(1));
         }
-
+ 
         rs.close();
         pstm.close();
         connMySQL.close();
         conn.close();
         return p;
     }
-
+ 
     // PUT actualizar pieza
     public Pieza update(int id, Pieza p) throws SQLException {
         String sql = """
@@ -169,7 +173,7 @@ public class InventarioController {
                 descripcion = ?
             WHERE id = ?
             """;
-
+ 
         ConnectionMySQL connMySQL = new ConnectionMySQL();
         Connection conn = connMySQL.open();
         PreparedStatement pstm = conn.prepareStatement(sql);
@@ -182,24 +186,24 @@ public class InventarioController {
         pstm.setString(7, p.getDescripcion());
         pstm.setInt(8, id);
         pstm.executeUpdate();
-
+ 
         pstm.close();
         connMySQL.close();
         conn.close();
         p.setId(id);
         return p;
     }
-
+ 
     // DELETE eliminar pieza
     public boolean delete(int id) throws SQLException {
         String sql = "DELETE FROM inventario WHERE id = ?";
-
+ 
         ConnectionMySQL connMySQL = new ConnectionMySQL();
         Connection conn = connMySQL.open();
         PreparedStatement pstm = conn.prepareStatement(sql);
         pstm.setInt(1, id);
         int rows = pstm.executeUpdate();
-
+ 
         pstm.close();
         connMySQL.close();
         conn.close();

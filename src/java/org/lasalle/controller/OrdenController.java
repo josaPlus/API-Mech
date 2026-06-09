@@ -19,7 +19,7 @@ import org.lasalle.model.Orden;
  * @author josaf
  */
 public class OrdenController {
-    
+
     private Orden fill(ResultSet rs) throws SQLException {
         Orden o = new Orden();
         o.setId(rs.getInt("id"));
@@ -170,51 +170,48 @@ public class OrdenController {
 
     // POST crear orden
     public Orden create(Orden o) throws SQLException {
-    // ✅ 9 valores: 0 + 8 ?
-    String sql = """
-        INSERT INTO ordenes
-        VALUES(0, ?, ?, ?, ?, ?, ?, ?, ?, DEFAULT, DEFAULT)
+        String sql = """
+        INSERT INTO ordenes 
+        (cliente_id, vehiculo_id, mecanico_id, estado, 
+         costo_mano_obra, costo_refacciones, descripcion)
+        VALUES(?, ?, ?, ?, ?, ?, ?)
         """;
 
-    // Calcular costo_total en Java
-    double total = o.getCostoManoObra() + o.getCostoRefacciones();
-    o.setCostoTotal(total);
+        ConnectionMySQL connMySQL = new ConnectionMySQL();
+        Connection conn = connMySQL.open();
+        PreparedStatement pstm = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+        pstm.setInt(1, o.getClienteId());
+        pstm.setInt(2, o.getVehiculoId());
+        pstm.setInt(3, o.getMecanicoId());
+        pstm.setString(4, o.getEstado());
+        pstm.setDouble(5, o.getCostoManoObra());
+        pstm.setDouble(6, o.getCostoRefacciones());
+        pstm.setString(7, o.getDescripcion());
+        pstm.executeUpdate();
 
-    ConnectionMySQL connMySQL = new ConnectionMySQL();
-    Connection conn = connMySQL.open();
-    PreparedStatement pstm = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-    pstm.setInt(1, o.getClienteId());
-    pstm.setInt(2, o.getVehiculoId());
-    pstm.setInt(3, o.getMecanicoId());
-    pstm.setString(4, o.getEstado());
-    pstm.setDouble(5, o.getCostoManoObra());
-    pstm.setDouble(6, o.getCostoRefacciones());
-    pstm.setDouble(7, total);              // ← costo_total
-    pstm.setString(8, o.getDescripcion()); // ← descripcion
-    pstm.executeUpdate();
+        ResultSet rs = pstm.getGeneratedKeys();
+        if (rs.next()) {
+            o.setId(rs.getInt(1));
+            o.setCostoTotal(o.getCostoManoObra() + o.getCostoRefacciones());
+            System.out.println("Orden creada con id: " + rs.getInt(1));
+        }
 
-    ResultSet rs = pstm.getGeneratedKeys();
-    if (rs.next()) {
-        o.setId(rs.getInt(1));
-        System.out.println("Orden creada con id: " + rs.getInt(1));
+        rs.close();
+        pstm.close();
+        connMySQL.close();
+        conn.close();
+        return o;
     }
-
-    rs.close();
-    pstm.close();
-    connMySQL.close();
-    conn.close();
-    return o;
-}
 
     // PUT actualizar orden
     public Orden update(int id, Orden o) throws SQLException {
         String sql = """
-            UPDATE ordenes
-            SET cliente_id = ?, vehiculo_id = ?, mecanico_id = ?,
-                estado = ?, costo_mano_obra = ?, costo_refacciones = ?,
-                descripcion = ?
-            WHERE id = ?
-            """;
+        UPDATE ordenes
+        SET cliente_id = ?, vehiculo_id = ?, mecanico_id = ?,
+            estado = ?, costo_mano_obra = ?, costo_refacciones = ?,
+            descripcion = ?
+        WHERE id = ?
+        """;
 
         ConnectionMySQL connMySQL = new ConnectionMySQL();
         Connection conn = connMySQL.open();
@@ -233,6 +230,7 @@ public class OrdenController {
         connMySQL.close();
         conn.close();
         o.setId(id);
+        o.setCostoTotal(o.getCostoManoObra() + o.getCostoRefacciones());
         return o;
     }
 
