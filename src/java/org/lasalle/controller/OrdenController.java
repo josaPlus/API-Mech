@@ -170,35 +170,41 @@ public class OrdenController {
 
     // POST crear orden
     public Orden create(Orden o) throws SQLException {
-        String sql = """
-            INSERT INTO ordenes
-            VALUES(0, ?, ?, ?, ?, ?, ?, ?, DEFAULT, DEFAULT)
-            """;
+    // ✅ 9 valores: 0 + 8 ?
+    String sql = """
+        INSERT INTO ordenes
+        VALUES(0, ?, ?, ?, ?, ?, ?, ?, ?, DEFAULT, DEFAULT)
+        """;
 
-        ConnectionMySQL connMySQL = new ConnectionMySQL();
-        Connection conn = connMySQL.open();
-        PreparedStatement pstm = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-        pstm.setInt(1, o.getClienteId());
-        pstm.setInt(2, o.getVehiculoId());
-        pstm.setInt(3, o.getMecanicoId());
-        pstm.setString(4, o.getEstado());
-        pstm.setDouble(5, o.getCostoManoObra());
-        pstm.setDouble(6, o.getCostoRefacciones());
-        pstm.setString(7, o.getDescripcion());
-        pstm.executeUpdate();
+    // Calcular costo_total en Java
+    double total = o.getCostoManoObra() + o.getCostoRefacciones();
+    o.setCostoTotal(total);
 
-        ResultSet rs = pstm.getGeneratedKeys();
-        if (rs.next()) {
-            o.setId(rs.getInt(1));
-            System.out.println("Orden creada con id: " + rs.getInt(1));
-        }
+    ConnectionMySQL connMySQL = new ConnectionMySQL();
+    Connection conn = connMySQL.open();
+    PreparedStatement pstm = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+    pstm.setInt(1, o.getClienteId());
+    pstm.setInt(2, o.getVehiculoId());
+    pstm.setInt(3, o.getMecanicoId());
+    pstm.setString(4, o.getEstado());
+    pstm.setDouble(5, o.getCostoManoObra());
+    pstm.setDouble(6, o.getCostoRefacciones());
+    pstm.setDouble(7, total);              // ← costo_total
+    pstm.setString(8, o.getDescripcion()); // ← descripcion
+    pstm.executeUpdate();
 
-        rs.close();
-        pstm.close();
-        connMySQL.close();
-        conn.close();
-        return o;
+    ResultSet rs = pstm.getGeneratedKeys();
+    if (rs.next()) {
+        o.setId(rs.getInt(1));
+        System.out.println("Orden creada con id: " + rs.getInt(1));
     }
+
+    rs.close();
+    pstm.close();
+    connMySQL.close();
+    conn.close();
+    return o;
+}
 
     // PUT actualizar orden
     public Orden update(int id, Orden o) throws SQLException {
